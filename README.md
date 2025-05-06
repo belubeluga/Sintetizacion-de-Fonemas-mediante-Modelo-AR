@@ -1,1 +1,1 @@
-# Sintetizaron_de_Fonemas-mediante-Modelo-AR
+# Sintetización de Fonemas mediante un modelo AR
