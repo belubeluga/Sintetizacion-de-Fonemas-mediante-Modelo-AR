@@ -10,7 +10,7 @@ import sounddevice as sd
 def densidadEspectralPotenciaAR(coef_a: np.array, coef_b: float, frecuencias: np.array,
                                S_U: np.array, fs: int) -> np.array:
     """
-    Calcula la PSD de la salida de un proceso AR
+    Calcula la PSD de la salida de un proceso AR (AutoRegresivo)
     
     Parámetros:
     - coef_a: array con coeficientes AR [a1, a2, ..., aP]
@@ -22,19 +22,13 @@ def densidadEspectralPotenciaAR(coef_a: np.array, coef_b: float, frecuencias: np
     Retorna:
     - S_X: array con PSD de salida para cada frecuencia 
     """
-    S_X = np.zeros_like(frecuencias)
+    omega = 2 * np.pi * frecuencias / fs
 
-    for i, f in enumerate(frecuencias):
-        omega = 2 * np.pi * f / fs    
-        denominador = 1 - sum(coef_a[j] * np.exp(-1j * omega * (j+1)) 
-                             for j in range(len(coef_a)))
-        
-        H_f = coef_b / denominador
-        H_squared = np.abs(H_f)**2
+    H_f = coef_b / np.abs(1 - np.sum([coef_a[i] * np.exp(-1j * omega * (i + 1)) 
+                                      for i in range(len(coef_a))], axis=0))**2
 
-        # S_X(f) = |H(f)|² × S_U(f)
-        S_X[i] = H_squared * S_U[i]
-    
+    # PSD = |H(f)|^2 * S_U
+    S_X = np.abs(H_f)**2 * S_U
     return S_X
 
 def gen_pulsos(f0, N, fs):

@@ -1,3 +1,10 @@
+import numpy as np
+from scipy.fft import fft
+from scipy.signal import freqz, lfilter
+import matplotlib.pyplot as plt
+import soundfile as sf
+import sounddevice as sd
+
 # Coeficiente b
 coef_b = {'a':[0.0311], 'e':[0.0321],'i':[0.0121], 'o':[0.0073], 'u': [0.00258], 's':[0.0251], 'sh':[0.0302], 'f':[0.0453], 'j':[0.0245]}
 
@@ -13,3 +20,56 @@ coef_a = {
         "f":[0.5988, -0.0429, -0.3181, -0.2044, 0.3401, -0.2233, -0.0889, 0.1002, 0.0213, -0.0634, 0.0929, 0.1195, -0.1242, 0.1506, -0.0795, 0.1444, 0.0262, 0.0056, 0.0531, 0.0727],
         "j":[1.1653, -0.6726, 0.67, -0.3186, -0.2648, -0.1825, 0.1804, -0.0515, 0.1982, -0.1682, 0.0735, 0.0452, -0.1658, 0.1665, -0.0253, -0.0508, 0.2067, -0.1849, 0.0751, 0.026]
          }
+
+def gen_pulsos(f0, N, fs):
+    """
+    Genera un tren de impulsos periodico en el tiempo.
+    f0: frecuencia fundamental (pitch) del tren de impulsos [Hz].
+    N: cantidad de puntos que posee el array de la secuencia generada.
+    fs: frecuencia de muestreo [Hz].
+    Retorna: tren de impulsos (con varianza normalizada) de frecuencia f0.
+    """
+    s = np.zeros(N)
+    s[np.arange(N) % round(fs / f0) == 0] = np.sqrt(fs / f0)
+    return s
+
+def psd_pulsos(f0, N, fs):
+    """
+    Genera la densidad espectral de potencia de un tren de impulsos.
+    f0: frecuencia fundamental [Hz] (pitch) del tren de impulsos en el tiempo.
+    N: cantidad de puntos que posee el array de la PSD resultante (SU(w)).
+    fs: frecuencia de muestreo [Hz].
+    Retorna:
+    - PSD del tren de impulsos
+    - Vector de frecuencias del espectro [Hz]
+    """
+    u = gen_pulsos(f0, N, fs)
+    f = np.arange(N) * fs /N    # Vector de frecuencias (Hz)
+    Su = np.abs(fft(u))**2 / N  # Periodograma
+    return Su, f
+
+def suavizar_bordes(x, fade=20):
+    """
+    Suaviza los bordes de una señal.
+    x: señal original (array).
+    fade: (float) porcentaje de transición en los bordes (0-50% del largo de x)
+    retorna: versión suavizada de x
+    """
+    N = len(x)
+    fade = max(1, min(fade, 50))  # Limita fade entre 1 y 50
+    M = 2 * int(fade / 100 * N)
+    v = np.hamming(M)
+    fade_in = v[:M // 2]
+    fade_out = v[M // 2:]
+    window = np.concatenate([fade_in, np.ones(N - M), fade_out])
+    s = window * x
+    return s
+
+def reproducir(audio, fs):
+    """
+    Reproducir audio usando soundevice
+    audio: array con el contenido de la señal
+    fs: freucencia de muestreo [Hz]
+    """
+    sd.play(audio, fs)
+    sd.wait()
